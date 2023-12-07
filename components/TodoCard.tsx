@@ -59,6 +59,9 @@ function TodoCard({
           <XCircleIcon className="ml-5 h-8 w-8" />
         </button>
       </div>
+      <div className="p-2 flex items-start">
+        <p className="text-gray-700 text-sm bg-gray-100 p-2 rounded-lg">{todo.description}</p>
+      </div>
       {imageUrl && (
         <div className="relative h-full w-full rounded-b-md">
           <Image

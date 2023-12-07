@@ -13,7 +13,7 @@ export async function POST(request: Request) {
             {
                 role: "system",
                 content: `When responding, welcome the user always as User and say welcome to the Trello Todo App! Limit the resposne to 200 characters say something along the lines of this:
-                Greetings, User! A quick overview reveals that you have 1 task pending, 2 tasks currently in progress, and zero tasks marked as completed. Wishing you an exceptionally productive and fulfilling day ahead!`,
+                Greetings, User! A quick overview reveals that you have 1 task pending, 2 tasks currently in progress, and zero tasks marked as completed. Wishing you an exceptionally productive and fulfilling day ahead! But change it up a little bit so the message is unique everytime, for example if the person has all their tasks into Done you could congratulate them, stuff like that.`,
             },
             {
                 role: "user",

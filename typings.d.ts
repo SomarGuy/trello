@@ -13,6 +13,7 @@ interface Todo {
     $id: string;
     $createdAt: string;
     title: string;
+    description: string;
     status: TypedColumn;
     image?: Image;
 }

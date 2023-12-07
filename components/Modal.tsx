@@ -10,6 +10,7 @@ import Image from "next/image";
 
 function Modal() {
   const imagePickerRef = useRef<HTMLInputElement>(null);
+  const [description, setDescription] = useState('');
 
   const [isOpen, closeModal] = useModalStore((state) => [
     state.isOpen,
@@ -26,14 +27,15 @@ function Modal() {
       state.image,
     ]);
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!newTaskInput) return;
-
-    addTask(newTaskInput, newTaskType, image);
-    setImage(null);
-    closeModal();
-  };
+    const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      if (!newTaskInput || !description) return; // Check for both title and description
+    
+      addTask(newTaskInput, description, newTaskType, image); // Include the description
+      setImage(null);
+      closeModal();
+    };
+    
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -83,6 +85,15 @@ function Modal() {
                   />
                 </div>
 
+                <div className="mt-2">
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Task description..."
+                    className="w-full border border-gray-300 rounded-lg p-3 text-sm shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                  />
+                </div>
+                
                 <TaskTypeRadioGroup />
 
                 {/* File Input goes here... */}

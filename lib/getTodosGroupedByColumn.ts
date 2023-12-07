@@ -13,19 +13,21 @@ export const getTodosGroupedByColumn = async() => {
             acc.set(todo.status, {
                 id: todo.status,
                 todos: []
-            })
+            });
         }
-
+    
         acc.get(todo.status)!.todos.push({
             $id: todo.$id,
             $createdAt: todo.$createdAt,
             title: todo.title,
+            description: todo.description, // Include the description here
             status: todo.status,
             ...(todo.image && { image: JSON.parse(todo.image) })
         });
-
+    
         return acc;
     }, new Map<TypedColumn, Column>());
+    
 
     const columnTypes: TypedColumn[] = ["todo", 'inprogress', 'done'];
     for (const columnType of columnTypes) {
