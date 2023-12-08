@@ -15,7 +15,8 @@ interface BoardState {
   setBoardState: (board: Board) => void;
   addTask: (
     todo: string,
-    description: string, // Add description here
+    description: string,
+    dueDate: string,
     columnId: TypedColumn,
     image?: File | null
   ) => void;
@@ -54,6 +55,8 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
       {
         title: todo.title,
         status: columnId,
+        dueDate: todo.dueDate,
+        description: todo.description
       }
     );
   },
@@ -84,7 +87,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
     );
   },
 
-  addTask: async (todo: string, description: string, columnId: TypedColumn, image?: File | null) => {
+  addTask: async (todo: string, description: string, dueDate: string, columnId: TypedColumn, image?: File | null) => {
     let file: Image | undefined;
 
     if (image) {
@@ -103,7 +106,8 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
       ID.unique(),
       {
         title: todo,
-        description, // Add the description here
+        description,
+        dueDate,
         status: columnId,
         ...(file && { image: JSON.stringify(file) }),
       }
@@ -113,15 +117,15 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
 
     set((state) => {
       const newColumns = new Map(state.board.columns);
-      const newTodo: Todo = {
+      const newTodo = {
         $id,
         $createdAt: new Date().toISOString(),
         title: todo,
-        description, // Make sure to include the new description property
+        description,
         status: columnId,
         ...(file && { image: file }),
       };
-
+  
       const column = newColumns.get(columnId);
       if (!column) {
         newColumns.set(columnId, {
@@ -131,12 +135,13 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
       } else {
         column.todos.push(newTodo);
       }
-
+  
       return {
         board: {
           columns: newColumns,
         },
       };
     });
+    get().getBoard();
   },
 }));

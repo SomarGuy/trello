@@ -7,35 +7,64 @@ import TaskTypeRadioGroup from "./TaskTypeRadioGroup";
 import { useBoardStore } from "@/store/BoardStore";
 import { PhotoIcon } from "@heroicons/react/24/solid";
 import Image from "next/image";
+import { zonedTimeToUtc, utcToZonedTime } from "date-fns-tz";
 
 function Modal() {
   const imagePickerRef = useRef<HTMLInputElement>(null);
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState("");
 
   const [isOpen, closeModal] = useModalStore((state) => [
     state.isOpen,
     state.closeModal,
   ]);
 
-  const [newTaskInput, setNewTaskInput, addTask, newTaskType, setImage, image] =
-    useBoardStore((state) => [
-      state.newTaskInput,
-      state.setNewTaskInput,
-      state.addTask,
-      state.newTaskType,
-      state.setImage,
-      state.image,
-    ]);
+  const [
+    newTaskInput,
+    setNewTaskInput,
+    addTask,
+    newTaskType,
+    setImage,
+    image,
+  ] = useBoardStore((state) => [
+    state.newTaskInput,
+    state.setNewTaskInput,
+    state.addTask,
+    state.newTaskType,
+    state.setImage,
+    state.image,
+  ]);
 
-    const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-      e.preventDefault();
-      if (!newTaskInput || !description) return; // Check for both title and description
-    
-      addTask(newTaskInput, description, newTaskType, image); // Include the description
-      setImage(null);
-      closeModal();
-    };
-    
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!newTaskInput || !description || !dueDate) return;
+
+    const localDueDate = zonedTimeToUtc(dueDate, "America/New_York");
+    const adjustedDueDate = localDueDate.toISOString();
+
+    addTask(newTaskInput, description, adjustedDueDate, newTaskType, image);
+    setImage(null);
+    closeModal();
+  };
+
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) {
+      return "No due date";
+    }
+
+    const utcDate = zonedTimeToUtc(dateString, "America/New_York");
+    const localDateFormatted = utcToZonedTime(
+      utcDate,
+      "America/New_York"
+    ).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    return localDateFormatted;
+  };
 
   return (
     <Transition appear show={isOpen} as={Fragment}>
@@ -93,10 +122,18 @@ function Modal() {
                     className="w-full border border-gray-300 rounded-lg p-3 text-sm shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                   />
                 </div>
-                
+
+                <div className="mt-2">
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className="w-full border border-gray-300 rounded-md p-2 text-sm shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                  />
+                </div>
+
                 <TaskTypeRadioGroup />
 
-                {/* File Input goes here... */}
                 <div className="mt-2">
                   <button
                     onClick={() => {
@@ -113,9 +150,7 @@ function Modal() {
                       alt="Uploaded Image"
                       width={200}
                       height={200}
-                      className="w-full h-44 object-cover mt-2 filter hover:grayscale
-                      transition-all duration-150 cursor-not-allowed
-                    "
+                      className="w-full h-44 object-cover mt-2 filter hover:grayscale transition-all duration-150 cursor-not-allowed"
                       onClick={() => {
                         setImage(null);
                       }}
@@ -128,7 +163,6 @@ function Modal() {
                     ref={imagePickerRef}
                     hidden
                     onChange={(e) => {
-                      // check e is an image
                       if (!e.target.files![0].type.startsWith("image/")) return;
                       setImage(e.target.files![0]);
                     }}

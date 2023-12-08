@@ -14,6 +14,7 @@ interface Todo {
     $createdAt: string;
     title: string;
     description: string;
+    dueDate?: string;
     status: TypedColumn;
     image?: Image;
 }
