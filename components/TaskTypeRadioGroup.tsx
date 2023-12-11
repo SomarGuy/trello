@@ -23,20 +23,28 @@ const types = [
   },
 ];
 
-export default function Example() {
+type TaskTypeRadioGroupProps = {
+  onTypeChange: (newType: TypedColumn) => void;
+};
+
+export const TaskTypeRadioGroup: React.FC<TaskTypeRadioGroupProps> = ({ onTypeChange }) => {
   const [setNewTaskType, newTaskType] = useBoardStore((state) => [
     state.setNewTaskType,
     state.newTaskType,
   ]);
+
+  const handleChange = (newType: string) => {
+    const typedNewType = newType as TypedColumn; // Cast newType to TypedColumn
+    setNewTaskType(typedNewType);
+    onTypeChange(typedNewType); // Pass the typed newType to onTypeChange
+  };
 
   return (
     <div className="w-full py-5">
       <div className="mx-auto w-full max-w-md">
         <RadioGroup
           value={newTaskType}
-          onChange={(e) => {
-            setNewTaskType(e);
-          }}
+          onChange={handleChange}
         >
           <RadioGroup.Label className="sr-only">Server size</RadioGroup.Label>
           <div className="space-y-2">

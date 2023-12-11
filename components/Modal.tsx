@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { FormEvent, Fragment } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { useModalStore } from "@/store/ModalStore";
-import TaskTypeRadioGroup from "./TaskTypeRadioGroup";
+import { TaskTypeRadioGroup } from "./TaskTypeRadioGroup";
 import { useBoardStore } from "@/store/BoardStore";
 import { zonedTimeToUtc } from "date-fns-tz";
 
@@ -11,7 +11,7 @@ function Modal() {
   const imagePickerRef = useRef<HTMLInputElement>(null);
   const { isOpen, isEditMode, currentTodo, closeModal } = useModalStore(state => state);
   const { addTask, updateEditedTodo, setImage: setGlobalImage } = useBoardStore(state => state);
-
+  const [taskType, setTaskType] = useState<TypedColumn>('todo');
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -22,28 +22,40 @@ function Modal() {
       setTitle(currentTodo.title);
       setDescription(currentTodo.description || "");
       setDueDate(currentTodo.dueDate || "");
+      setTaskType(currentTodo.status);
     } else {
       setTitle("");
       setDescription("");
       setDueDate("");
       setSelectedImage(null);
+      const newType = useBoardStore.getState().newTaskType; // Get the newTaskType from useBoardStore
+      setTaskType(newType); // Set the taskType based on the newTaskType
     }
   }, [isEditMode, currentTodo]);
+  
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const updatedDueDate = dueDate ? zonedTimeToUtc(dueDate, "America/New_York").toISOString() : "";
-    
+  
+    const currentNewTaskType = useBoardStore.getState().newTaskType; // Get the current new task type
+  
     if (isEditMode && currentTodo) {
       await updateEditedTodo(
         currentTodo.$id,
         title,
         description,
         updatedDueDate,
-        currentTodo.status
+        currentTodo.status,
       );
     } else {
-      await addTask(title, description, updatedDueDate, "todo", selectedImage);
+      await addTask(
+        title,
+        description,
+        updatedDueDate,
+        currentNewTaskType, // Use the newTaskType from the store
+        selectedImage
+      );
     }
 
     setTitle("");
@@ -116,7 +128,7 @@ function Modal() {
                     className="w-full border border-gray-300 rounded-md p-2"
                   />
                 </div>
-                <TaskTypeRadioGroup />
+                <TaskTypeRadioGroup onTypeChange={setTaskType} />
                 <div className="mt-2">
                   <button
                     type="button"
