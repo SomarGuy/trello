@@ -10,19 +10,30 @@ interface BoardState {
   newTaskInput: string;
   image: File | null;
   searchString: string;
+  editTodoId: string | null;
+  editTodoTitle: string;
+  editTodoDescription: string;
+  editTodoDueDate: string;
 
   countTodos: (columnId: TypedColumn) => number;
   setBoardState: (board: Board) => void;
   addTask: (
-    todo: string,
+    title: string,
     description: string,
     dueDate: string,
     columnId: TypedColumn,
     image?: File | null
   ) => void;
-  deleteTask: (taskIndex: number, todoId: Todo, id: TypedColumn) => void;
+  deleteTask: (taskIndex: number, todo: Todo, id: TypedColumn) => void;
   updateTodoInDB: (todo: Todo, columnId: TypedColumn) => void;
-
+  setEditTodo: (todo: Todo | null) => void;
+  updateEditedTodo: (
+    id: string,
+    title: string,
+    description: string,
+    dueDate: string,
+    columnId: TypedColumn
+  ) => Promise<void>;
   setNewTaskType: (columnId: TypedColumn) => void;
   setNewTaskInput: (input: string) => void;
   setImage: (image: File | null) => void;
@@ -41,11 +52,23 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
   newTaskInput: "",
   image: null,
   searchString: "",
+  editTodoId: null,
+  editTodoTitle: '',
+  editTodoDescription: '',
+  editTodoDueDate: '',
 
   setImage: (image: File | null) => set({ image }),
   setNewTaskType: (columnId: TypedColumn) => set({ newTaskType: columnId }),
   setNewTaskInput: (input: string) => set({ newTaskInput: input }),
   setSearchString: (searchString: string) => set({ searchString }),
+  setEditTodo: (todo: Todo | null) => {
+    set({
+      editTodoId: todo ? todo.$id : null,
+      editTodoTitle: todo ? todo.title : '',
+      editTodoDescription: todo ? todo.description : '',
+      editTodoDueDate: todo ? todo.dueDate : '',
+    });
+  },
 
   updateTodoInDB: async (todo: Todo, columnId: TypedColumn) => {
     await databases.updateDocument(
@@ -61,19 +84,44 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
     );
   },
 
+  updateEditedTodo: async (id, title, description, dueDate, columnId) => {
+    // Update the todo document in the database
+    await databases.updateDocument(
+      process.env.NEXT_PUBLIC_DATABASE_ID!,
+      process.env.NEXT_PUBLIC_TODOS_COLLECTION_ID!,
+      id,
+      { title, description, dueDate, status: columnId }
+    );
+  
+    // Update the local state
+    set((state) => {
+      const newColumns = new Map(state.board.columns);
+      const column = newColumns.get(columnId);
+      if (column) {
+        const todoIndex = column.todos.findIndex((todo) => todo.$id === id);
+        if (todoIndex > -1) {
+          column.todos[todoIndex] = {
+            ...column.todos[todoIndex],
+            title,
+            description,
+            dueDate,
+          };
+        }
+      }
+      return { board: { columns: newColumns } };
+    });
+  },
+
   countTodos: (columnId: TypedColumn) =>
     get().board.columns.get(columnId)?.todos.length || 0,
 
-  setBoardState: async (board: Board) => {
+  setBoardState: (board: Board) => {
     set({ board });
   },
 
-  deleteTask: async (taskIndex: number, todo: Todo, id: TypedColumn) => {
+  deleteTask: async (taskIndex, todo, id) => {
     const newColumns = new Map(get().board.columns);
-
-    // delete todoId from newColumns
     newColumns.get(id)?.todos.splice(taskIndex, 1);
-
     set({ board: { columns: newColumns } });
 
     if (todo.image) {
@@ -87,7 +135,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
     );
   },
 
-  addTask: async (todo: string, description: string, dueDate: string, columnId: TypedColumn, image?: File | null) => {
+  addTask: async (title, description, dueDate, columnId, image) => {
     let file: Image | undefined;
 
     if (image) {
@@ -105,7 +153,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
       process.env.NEXT_PUBLIC_TODOS_COLLECTION_ID!,
       ID.unique(),
       {
-        title: todo,
+        title,
         description,
         dueDate,
         status: columnId,
@@ -120,12 +168,12 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
       const newTodo = {
         $id,
         $createdAt: new Date().toISOString(),
-        title: todo,
+        title,
         description,
         status: columnId,
         ...(file && { image: file }),
       };
-  
+
       const column = newColumns.get(columnId);
       if (!column) {
         newColumns.set(columnId, {
@@ -135,7 +183,7 @@ export const useBoardStore = create<BoardState>()((set, get) => ({
       } else {
         column.todos.push(newTodo);
       }
-  
+
       return {
         board: {
           columns: newColumns,

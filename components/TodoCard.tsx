@@ -1,4 +1,3 @@
-// TodoCard.tsx
 "use client";
 
 import getUrl from "@/lib/getUrl";
@@ -9,6 +8,9 @@ import { useEffect, useState } from "react";
 import { DraggableProvidedDragHandleProps, DraggableProvidedDraggableProps } from "react-beautiful-dnd";
 import { format } from 'date-fns';
 import { parseISO } from 'date-fns';
+import { PencilIcon } from "@heroicons/react/24/outline";
+import { useModalStore } from "@/store/ModalStore";
+
 
 type Props = {
   todo: Todo;
@@ -29,6 +31,13 @@ function TodoCard({
 }: Props) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const deleteTask = useBoardStore((state) => state.deleteTask);
+  const setEditTodo = useBoardStore((state) => state.setEditTodo);
+  const openModal = useModalStore((state) => state.openModal);
+
+    const handleEditClick = () => {
+      setEditTodo(todo);
+      openModal(true, todo);
+    };
 
   useEffect(() => {
     if (todo.image) {
@@ -42,12 +51,10 @@ function TodoCard({
     }
   }, [todo]);
 
-  // Function to format the date for display
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) {
       return 'No due date';
     }
-    // Parse ISO date string
     const localDate = parseISO(dateString);
     return format(localDate, 'PPP');
   };
@@ -61,12 +68,20 @@ function TodoCard({
     >
       <div className="flex justify-between items-center p-5">
         <p>{todo.title}</p>
-        <button
-          onClick={() => deleteTask(index, todo, id)}
-          className="text-red-500 hover:text-red-600"
+        <div className="flex items-center">
+          <button
+          onClick={handleEditClick}
+          className="text-gray-500 hover:text-gray-700 mr-2"
         >
-          <XCircleIcon className="ml-5 h-8 w-8" />
+          <PencilIcon className="h-5 w-5" />
         </button>
+          <button
+            onClick={() => deleteTask(index, todo, id)}
+            className="text-red-500 hover:text-red-600"
+          >
+            <XCircleIcon className="h-8 w-8" />
+          </button>
+        </div>
       </div>
       <div className="p-2 flex items-start">
         <p className="text-gray-700 text-sm bg-gray-100 p-2 rounded-lg">{todo.description}</p>
@@ -86,6 +101,7 @@ function TodoCard({
             width={400}
             height={200}
             className="w-full object-contain rounded-b-md"
+            priority
           />
         </div>
       )}

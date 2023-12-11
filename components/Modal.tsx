@@ -1,69 +1,56 @@
-"use client";
-
-import { FormEvent, Fragment, useRef, useState } from "react";
+"use client"
+import React, { useState, useRef, useEffect } from "react";
+import { FormEvent, Fragment } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import { useModalStore } from "@/store/ModalStore";
 import TaskTypeRadioGroup from "./TaskTypeRadioGroup";
 import { useBoardStore } from "@/store/BoardStore";
-import { PhotoIcon } from "@heroicons/react/24/solid";
-import Image from "next/image";
-import { zonedTimeToUtc, utcToZonedTime } from "date-fns-tz";
+import { zonedTimeToUtc } from "date-fns-tz";
 
 function Modal() {
   const imagePickerRef = useRef<HTMLInputElement>(null);
+  const { isOpen, isEditMode, currentTodo, closeModal } = useModalStore(state => state);
+  const { addTask, updateEditedTodo, setImage: setGlobalImage } = useBoardStore(state => state);
+
+  const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
 
-  const [isOpen, closeModal] = useModalStore((state) => [
-    state.isOpen,
-    state.closeModal,
-  ]);
+  useEffect(() => {
+    if (isEditMode && currentTodo) {
+      setTitle(currentTodo.title);
+      setDescription(currentTodo.description || "");
+      setDueDate(currentTodo.dueDate || "");
+    } else {
+      setTitle("");
+      setDescription("");
+      setDueDate("");
+      setSelectedImage(null);
+    }
+  }, [isEditMode, currentTodo]);
 
-  const [
-    newTaskInput,
-    setNewTaskInput,
-    addTask,
-    newTaskType,
-    setImage,
-    image,
-  ] = useBoardStore((state) => [
-    state.newTaskInput,
-    state.setNewTaskInput,
-    state.addTask,
-    state.newTaskType,
-    state.setImage,
-    state.image,
-  ]);
-
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!newTaskInput || !description || !dueDate) return;
-
-    const localDueDate = zonedTimeToUtc(dueDate, "America/New_York");
-    const adjustedDueDate = localDueDate.toISOString();
-
-    addTask(newTaskInput, description, adjustedDueDate, newTaskType, image);
-    setImage(null);
-    closeModal();
-  };
-
-  const formatDate = (dateString: string | undefined) => {
-    if (!dateString) {
-      return "No due date";
+    const updatedDueDate = dueDate ? zonedTimeToUtc(dueDate, "America/New_York").toISOString() : "";
+    
+    if (isEditMode && currentTodo) {
+      await updateEditedTodo(
+        currentTodo.$id,
+        title,
+        description,
+        updatedDueDate,
+        currentTodo.status
+      );
+    } else {
+      await addTask(title, description, updatedDueDate, "todo", selectedImage);
     }
 
-    const utcDate = zonedTimeToUtc(dateString, "America/New_York");
-    const localDateFormatted = utcToZonedTime(
-      utcDate,
-      "America/New_York"
-    ).toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-
-    return localDateFormatted;
+    setTitle("");
+    setDescription("");
+    setDueDate("");
+    setSelectedImage(null);
+    closeModal();
   };
 
   return (
@@ -100,82 +87,62 @@ function Modal() {
               <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
                 <Dialog.Title
                   as="h3"
-                  className="text-lg font-medium leading-6 text-gray-900 pb-2"
+                  className="text-lg font-medium leading-6 text-gray-900"
                 >
-                  Add a Task
+                  {isEditMode ? "Edit Task" : "Add a Task"}
                 </Dialog.Title>
                 <div className="mt-2">
-                  <input
-                    type="text"
-                    value={newTaskInput}
-                    onChange={(e) => setNewTaskInput(e.target.value)}
-                    placeholder="Enter a task here..."
-                    className="w-full border border-gray-300 rounded-md outline-none p-5"
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Enter a task title..."
+                    className="w-full border border-gray-300 rounded-md p-2"
                   />
                 </div>
-
                 <div className="mt-2">
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Task description..."
-                    className="w-full border border-gray-300 rounded-lg p-3 text-sm shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                    className="w-full border border-gray-300 rounded-lg p-2"
                   />
                 </div>
-
                 <div className="mt-2">
                   <input
                     type="date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md p-2 text-sm shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                    className="w-full border border-gray-300 rounded-md p-2"
                   />
                 </div>
-
                 <TaskTypeRadioGroup />
-
                 <div className="mt-2">
                   <button
-                    onClick={() => {
-                      imagePickerRef.current?.click();
-                    }}
                     type="button"
-                    className="w-full border border-gray-300 rounded-md outline-none p-5 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                    onClick={() => imagePickerRef.current?.click()}
+                    className="w-full border border-gray-300 rounded-md p-2"
                   >
-                    <PhotoIcon className="h-6 w-6 mr-2 inline-block" />
                     Upload Image
                   </button>
-                  {image && (
-                    <Image
-                      alt="Uploaded Image"
-                      width={200}
-                      height={200}
-                      className="w-full h-44 object-cover mt-2 filter hover:grayscale transition-all duration-150 cursor-not-allowed"
-                      onClick={() => {
-                        setImage(null);
-                      }}
-                      src={URL.createObjectURL(image)}
-                    />
-                  )}
-
                   <input
                     type="file"
                     ref={imagePickerRef}
                     hidden
                     onChange={(e) => {
-                      if (!e.target.files![0].type.startsWith("image/")) return;
-                      setImage(e.target.files![0]);
+                      const file = e.target.files ? e.target.files[0] : null;
+                      if (file && file.type.startsWith("image/")) {
+                        setSelectedImage(file);
+                      }
                     }}
                   />
                 </div>
-
                 <div className="mt-4">
                   <button
                     type="submit"
-                    disabled={!newTaskInput}
-                    className="inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-4 py-2 text-sm font-medium text-blue-900 hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:bg-gray-100 disabled:text-gray-300 disabled:cursor-not-allowed"
+                    className="inline-flex justify-center rounded-md border border-transparent bg-blue-100 px-4 py-2 text-sm font-medium text-blue-900 hover:bg-blue-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                   >
-                    Add Task
+                    {isEditMode ? "Save Changes" : "Add Task"}
                   </button>
                 </div>
               </Dialog.Panel>
